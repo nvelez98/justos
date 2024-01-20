@@ -6,7 +6,7 @@ F_PATH = 'C:/Users/nvele/PycharmProjects/Justos/Justos_DS_takehome_dataset.gz.pa
 #        'policy_claims_num_paid', 'policy_holder_gender', 'policy_holder_bonus_clas',
 #        'vehicle_brand', 'vehicle_model', 'vehicle_make_year', 'vehicle_tarif_class',
 #        'policy_holder_residence_region', 'policy_holder_residence_city']
-ANALYSIS_COLS = ['age' , 'age_group', 'vehicle_price_group','vehicle_brand', 'vehicle_tarif_class', 'policy_holder_residence_region']
+ANALYSIS_COLS = ['age' , 'age_group', 'vehicle_price_group','vehicle_brand', 'vehicle_tarif_class', 'policy_holder_residence_region', 'policy_holder_gender', 'policy_holder_bonus_clas', 'vehicle_make_year', 'policy_holder_residence_city']
 
 RANGE_COLUMNS = ['policy_start_date', 'policy_holder_birth_date', 'vehicle_value_brl']
 

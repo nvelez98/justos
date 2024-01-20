@@ -10,10 +10,21 @@ class DataFrameTransformer:
         self.df = pd.DataFrame()
         self.NUM_INSURANCES = None
         self.dfs = []
+        self.avg_loss_ratio = None
+        self.male_lr = None
+        self.female_lr = None
+        self.paid_df = None
 
     def read_data_parquet(self, path):
         self.df = pd.read_parquet(path)
         self.NUM_INSURANCES = len(self.df)
+
+    def calc_avg_loss_ratio(self, paid_col, rcv_col):
+        self.avg_loss_ratio = self.df[paid_col].sum() / self.df[rcv_col].sum()
+
+    def get_paid_df(self):
+        self.paid_df = self.df[self.df['policy_claims_total_amount_paid_brl'] > 0]
+        self.paid_df['pay size'] = self.paid_df['policy_claims_total_amount_paid_brl']/self.paid_df['policy_premium_received_brl']
 
     def calculate_age(self, date_of_birth_col, current_date=None):
         if current_date is None:
@@ -51,18 +62,27 @@ class DataFrameTransformer:
             df = df[df['count'] > qnt]
         return df
 
+    def set_loss_ratio_by_gener(self, df):
+        self.male_lr = df[df['policy_holder_gender'] == 'M']['loss_ratio'].iloc[0]
+        self.female_lr = df[df['policy_holder_gender'] == 'F']['loss_ratio'].iloc[0]
+
 
 
 ###############################################################################################
 
     #GRAPH FUNCTIONS
 
-    def plot_histogram(self, col, title, limit=False):
+    def plot_histogram(self, col, title, limit=False, dframe = None):
+
+        if dframe is None:
+            df = self.df
+        else:
+            df = dframe
 
         if limit == True:
-            df2 = self.df[self.df[col] < np.percentile(self.df[col], 99.9)]
+            df2 = df[df[col] < np.percentile(df[col], 99.9)]
         else:
-            df2 = self.df
+            df2 = df
         iqr = np.percentile(df2[col], 75) - np.percentile(df2[col], 25)
         bin_width = 2 * iqr / (len(df2[col]) ** (1 / 3))
         num_bins = int((df2[col].max() - df2[col].min()) / bin_width)
@@ -75,24 +95,27 @@ class DataFrameTransformer:
         plt.ticklabel_format(style='plain', axis='x')
         plt.show()
 
-    def plot_barchart(self, df, col,  title, labels = None, rot = 'horizontal', colr = 'skyblue', fsize = None):
+    def plot_barchart(self, df, col,  title, labels = None, rot = 'horizontal', colr = 'skyblue', fsize = None, adjust = None, vals = 'loss_ratio', tiks = True):
         if labels is None:
             labels = df[df.columns[0]]
         plt.figure(figsize=(10, 6))
         bar_positions = np.arange(len(labels))
-        bars = plt.bar(bar_positions, df['loss_ratio'], width=0.7, color=colr)
+        bars = plt.bar(bar_positions, df[vals], width=0.7, color=colr)
+        if adjust is not None:
+            plt.subplots_adjust(bottom=adjust)
 
-        plt.bar(bar_positions, df['loss_ratio'], width=0.7, color=colr)
+        plt.bar(bar_positions, df[vals], width=0.7, color=colr)
         plt.xlabel(col)
-        plt.ylabel('loss_ratio')
+        plt.ylabel(vals)
         plt.title(title)
         plt.xticks(bar_positions, labels, rotation=rot)
         if fsize is not None:
             plt.xticks(fontsize=fsize)
 
-        for bar in bars:
-            yval = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width() / 2, yval, round(yval, 2), ha='center', va='bottom')
+        if tiks == True:
+            for bar in bars:
+                yval = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width() / 2, yval, round(yval, 2), ha='center', va='bottom')
         plt.show()
 
     def plot_barchart_composed(self, df, col1, col2, labels, title):
@@ -167,6 +190,32 @@ class DataFrameTransformer:
         if fsize is not None:
             plt.xticks(fontsize=fsize)
         plt.show()
+
+    def plot_joined_dot(self, df, col, title, clr = 'blue', tik = False):
+
+        x = df[col]
+        y= df['loss_ratio']
+        plt.plot(x, y, marker='o', linestyle='-', color = clr)
+        if tik == True:
+            y = y.round(2)
+            for xv, yv in zip(x, y):
+                plt.annotate(f'{yv}', (xv, yv), textcoords="offset points", xytext=(0, 5), ha='center', fontsize=8,
+                             color='black')
+        plt.xlabel(col)
+        plt.ylabel('loss_ratio')
+        plt.title(title)
+        plt.show()
+
+    def plot_boxplot(self, df, col, title):
+        df.boxplot(column=[col])
+
+        plt.xlabel(col)
+        plt.ylabel('Values')
+        plt.title(title)
+        plt.show()
+
+
+
 
 
 
