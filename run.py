@@ -16,7 +16,8 @@ transformer.calc_avg_loss_ratio('policy_claims_total_amount_paid_brl', 'policy_p
 '''calculate the age of the policy holders, and create age groups in 5Y intervals'''
 transformer.calculate_age('policy_holder_birth_date')
 transformer.copy_into_regression()
-
+transformer.exclude_age_anomalies()
+transformer.calculate_vehicle_age()
 for col in REGRESSION_INPUT_CATEGORIES:
     transformer.calculate_avg_loss_by_category('policy_claims_total_amount_paid_brl', col)
 
@@ -25,6 +26,9 @@ for index, value in enumerate(REGRESSION_INPUT_CATEGORIES):
 
 for col in ANOVA_OW_CATEGORIES:
     transformer.perform_one_anova('policy_claims_total_amount_paid_brl', col)
+
+transformer.map_to_clusters()
+transformer.regression_model()
 
 
 
@@ -87,11 +91,4 @@ transformer.plot_size_scatter(transformer.dfs[9], 'Loss ratio by city and number
 print('Finishes data analysis')
 
 
-'''Notas por categor'ia:
-    Policy exposure days. Maybe pedir m'as info de a que hace referencia esta variable
-    policy claims num reported, quizas da m'as info el count, habria que comparar contra otras variables, pero no creo que haga falta
-    Lo mismo que lo anterior, interesante ver el reported vs paid, aunque igual serria extra y no creo que haga falta.
-    binus class, interesante ver con linea de tendencia
-    vehicle make year, ver con linea de tendencia - grafico de puntos unidos
-    Vehicle tariff class - interesante analizar'''
 

@@ -11,6 +11,7 @@ CATEGORICAL_VARIABLES = ['age' , 'policy_holder_zipcode', 'policy_holder_gender'
         'vehicle_brand', 'vehicle_model', 'vehicle_make_year', 'vehicle_tarif_class',
         'policy_holder_residence_region', 'policy_holder_residence_city']
 
+CURRENT_YEAR = 2023
 
 ANALYSIS_COLS = ['age' , 'age_group', 'vehicle_price_group','vehicle_brand', 'vehicle_tarif_class', 'policy_holder_residence_region', 'policy_holder_gender', 'policy_holder_bonus_clas', 'vehicle_make_year', 'policy_holder_residence_city']
 
@@ -28,11 +29,14 @@ PRICE_LABELS = ['0-5K', '5-10K', '10-15K', '15-20K', '20-25K', '25-30K', '30-35K
 AGE_RANGES_REGRESSION = [0, 35, 80, float('inf')]
 AGE_LABELS_REGRESSION = ['<35', '35-80', '>=80']
 
-MAKE_YEAR_RANGES = [0,2000, float('inf')]
-MAKE_YEAR_RANGES = ['Old', 'New']
-
 VEHICLE_TARIFF_CLASS_RANGES = [0,200, 400, float('inf')]
-VEHICLE_TARIFF_CLASS_RANGES = ['low_tariff_class', 'medium_tariff_class', 'high_tariff_class']
+VEHICLE_TARIFF_CLASS_LABELS = ['low_tariff_class', 'medium_tariff_class', 'high_tariff_class']
+
+VEHICLE_BRAND_RANGES = [0,150, 250, 410, float('inf')]
+VEHICLE_BRAND_LABELS = ['low_brand', 'medium_brand', 'high_brand', 'very_high_brand']
+
+REGION_RANGES = [0,150,165, 180, float('inf')]
+REGION_LABELS = ['low_region', 'medium_region', 'high_region', 'very_high_region']
 
 REGRESSION_INPUT_CATEGORIES = ['age' , 'policy_holder_gender', 'policy_holder_bonus_clas',
         'vehicle_brand',  'vehicle_make_year', 'vehicle_tarif_class',
@@ -45,3 +49,17 @@ ANOVA_OW_CATEGORIES = ['policy_holder_gender', 'vehicle_brand', 'vehicle_tarif_c
 
 CLUSTER_CATEGORIES = ['vehicle_tarif_class', 'policy_holder_residence_region',  'vehicle_make_year', 'vehicle_brand']
 NUM_CLUSTS = {'vehicle_tarif_class':3, 'policy_holder_residence_region':3,  'vehicle_make_year':2, 'vehicle_brand':3}
+
+REGRESSION_COLUMNS = ['age_clusters' , 'policy_holder_gender', 'policy_holder_bonus_clas',
+        'brand_clusters',  'vehicle_age', 'tariff_clusters', 'region_clusters', 'vehicle_value_brl',
+                      'policy_claims_total_amount_paid_brl']
+
+CATEGORICAL_REGRESSION_COLUMNS = ['age_clusters' , 'policy_holder_gender',
+        'brand_clusters',  'tariff_clusters', 'region_clusters']
+
+BOOL_COLS = [ 'age_clusters_35-80',
+       'age_clusters_>=80', 'policy_holder_gender_M',
+       'brand_clusters_low_brand', 'brand_clusters_medium_brand',
+       'brand_clusters_very_high_brand', 'tariff_clusters_low_tariff_class',
+       'tariff_clusters_medium_tariff_class', 'region_clusters_low_region',
+       'region_clusters_medium_region', 'region_clusters_very_high_region']

@@ -3,13 +3,10 @@ import datetime
 from Constants import *
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeRegressor
-from statsmodels.formula.api import ols
-from statsmodels.stats.anova import anova_lm
 from scipy.stats import f_oneway
 from kmodes.kmodes import KModes
-
+import statsmodels.api as sm
+from sklearn.metrics import r2_score
 
 class DataFrameTransformer:
     def __init__(self):
@@ -23,6 +20,7 @@ class DataFrameTransformer:
         self.paid_df = None
         self.regression_df = None
         self.anova_results = []
+        self.regression_output_df = pd.DataFrame()
 
     def read_data_parquet(self, path):
         self.df = pd.read_parquet(path)
@@ -82,16 +80,21 @@ class DataFrameTransformer:
         count = self.regression_df.groupby(col).size().reset_index(name='count')
         if col in REPLACE_LIST:
             categories_to_replace = count[count['count'] < 1000][col].to_list()
-            copy_df = self.regression_df.copy()
             self.regression_df[col] = self.regression_df[col].replace(categories_to_replace, 'others')
+            copy_df = self.regression_df.copy()
             copy_df[col] = copy_df[col].replace(categories_to_replace, 'others')
             avg_loss = copy_df.groupby(col)[paid_col].mean().reset_index(name='avg_loss')
+            avg_loss = avg_loss.sort_values(by='avg_loss')
         else:
             avg_loss = self.regression_df.groupby(col)[paid_col].mean().reset_index(name='avg_loss')
-        avg_loss = pd.merge(avg_loss, count, on=col)
 
         self.avg_dfs.append(avg_loss)
 
+    def calculate_vehicle_age(self):
+        self.regression_df['vehicle_age'] = CURRENT_YEAR - self.regression_df['vehicle_make_year']
+
+    def exclude_age_anomalies(self):
+        self.regression_df = self.regression_df[self.regression_df['age'] < 100]
 
 
 ##############################################################################################
@@ -115,6 +118,58 @@ class DataFrameTransformer:
         clusters = km.fit_predict(df_cluster)
         col_name = '{col}_clusters'.format(col = col)
         self.regression_df[col_name] = clusters
+
+    def map_to_clusters(self):
+        '''age clusters'''
+        self.regression_df['age_clusters'] = pd.cut(self.regression_df['age'], bins=AGE_RANGES_REGRESSION, labels=AGE_LABELS_REGRESSION, right=False)
+
+        '''tariff_class_clusters'''
+        self.avg_dfs[5]['tariff_clusters'] = pd.cut(self.avg_dfs[5]['avg_loss'], bins=VEHICLE_TARIFF_CLASS_RANGES,
+                                                    labels=VEHICLE_TARIFF_CLASS_LABELS, right=False)
+        tarif_dict = dict(zip(self.avg_dfs[5]['vehicle_tarif_class'], self.avg_dfs[5]['tariff_clusters']))
+        self.regression_df['tariff_clusters'] = self.regression_df['vehicle_tarif_class'].map(tarif_dict)
+
+        '''brand_ranges'''
+        self.avg_dfs[3]['brand_clusters'] = pd.cut(self.avg_dfs[3]['avg_loss'], bins=VEHICLE_BRAND_RANGES,
+                                                    labels=VEHICLE_BRAND_LABELS, right=False)
+        brand_dict = dict(zip(self.avg_dfs[3]['vehicle_brand'], self.avg_dfs[3]['brand_clusters']))
+        self.regression_df['brand_clusters'] = self.regression_df['vehicle_brand'].map(brand_dict)
+
+        '''region_ranges'''
+        self.avg_dfs[6]['region_clusters'] = pd.cut(self.avg_dfs[6]['avg_loss'], bins=REGION_RANGES,
+                                                   labels=REGION_LABELS, right=False)
+        region_dict = dict(zip(self.avg_dfs[6]['policy_holder_residence_region'], self.avg_dfs[6]['region_clusters']))
+        self.regression_df['region_clusters'] = self.regression_df['policy_holder_residence_region'].map(region_dict)
+
+
+
+    def regression_model(self):
+
+        df = self.regression_df[REGRESSION_COLUMNS]
+        df = df.dropna()
+        df1 = df[REGRESSION_COLUMNS]
+        df = pd.get_dummies(df1, columns=CATEGORICAL_REGRESSION_COLUMNS, drop_first=True)
+        dict = {True:1, False:0}
+        for col in BOOL_COLS:
+            df[col] = df[col].map(dict)
+        y = df['policy_claims_total_amount_paid_brl']
+        X = df.drop(['policy_claims_total_amount_paid_brl'], axis=1)
+        X = sm.add_constant(X)
+        model = sm.OLS(y, X).fit()
+
+        print(model.summary())
+        while model.pvalues.max() > 0.05:
+            variable_to_remove = model.pvalues.idxmax()
+            X = X.drop([variable_to_remove], axis=1)
+            model = sm.OLS(y, X).fit()
+        print(model.summary())
+        self.regression_output_df = df1
+        self.regression_output_df['prediction'] = model.predict(X)
+        self.regression_output_df['predicted_price'] = self.regression_output_df['prediction']/self.avg_loss_ratio
+
+
+
+
 
 
 ###############################################################################################
