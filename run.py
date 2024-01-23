@@ -7,31 +7,12 @@ transformer = DataFrameTransformer()
 
 '''read data from parquet file'''
 transformer.read_data_parquet(F_PATH)
-#transformer.get_paid_df()
-#transformer.plot_histogram('pay size', 'Distribution of pay size', limit = True,dframe = transformer.paid_df)
 
 '''Calculate avg loss ratio for Brasil'''
 transformer.calc_avg_loss_ratio('policy_claims_total_amount_paid_brl', 'policy_premium_received_brl')
 
 '''calculate the age of the policy holders, and create age groups in 5Y intervals'''
 transformer.calculate_age('policy_holder_birth_date')
-transformer.copy_into_regression()
-transformer.exclude_age_anomalies()
-transformer.calculate_vehicle_age()
-for col in REGRESSION_INPUT_CATEGORIES:
-    transformer.calculate_avg_loss_by_category('policy_claims_total_amount_paid_brl', col)
-
-for index, value in enumerate(REGRESSION_INPUT_CATEGORIES):
-    transformer.plot_barchart(transformer.avg_dfs[index], value, 'avg loss by {fill}'.format(fill = value), vals = 'avg_loss')
-
-for col in ANOVA_OW_CATEGORIES:
-    transformer.perform_one_anova('policy_claims_total_amount_paid_brl', col)
-
-transformer.map_to_clusters()
-transformer.regression_model()
-
-
-
 
 '''Plot distribution of vehicle prices to get an idea of the behaviour of the variable'''
 transformer.plot_histogram('vehicle_value_brl', 'Distribution of vehicle values in insurance policies', limit = True)
@@ -88,7 +69,44 @@ transformer.plot_barchart(transformer.dfs[8], 'vehicle_make_year', 'Distribution
 transformer.dfs[9]  = transformer.srt_and_filter(transformer.dfs[9], qnt =25000)
 transformer.plot_size_scatter(transformer.dfs[9], 'Loss ratio by city and number of insurances', 'policy_holder_residence_city',rot = 'vertical', factor = 0.005, fsize = 8, adjust = 0.35)
 
-print('Finishes data analysis')
+print('Finished exploratory analysis')
+print('Starting model analysis')
+
+'''copy data into the regression df'''
+transformer.copy_into_regression()
+
+'''exclude age anomalies of 100+ years'''
+transformer.exclude_age_anomalies()
+
+'''calculate vehicle age instead of vehicle make year for better format for a linear regression'''
+transformer.calculate_vehicle_age()
+
+'''calculate the avg pay by categories in order to get an idea of difference between and within categories'''
+for col in REGRESSION_INPUT_CATEGORIES:
+    transformer.calculate_avg_loss_by_category('policy_claims_total_amount_paid_brl', col)
+
+'''graph avg pay by categories to get an idea of possible significance of variables and ptential clusters'''
+for index, value in enumerate(REGRESSION_INPUT_CATEGORIES):
+    transformer.plot_barchart(transformer.avg_dfs[index], value, 'avg loss by {fill}'.format(fill = value), vals = 'avg_loss', rot = 'vertical', adjust = 0.2)
+
+'''perform ANOVA on certain categorical variables to determine if they are significant'''
+for col in ANOVA_OW_CATEGORIES:
+    transformer.perform_one_anova('policy_claims_total_amount_paid_brl', col)
+
+'''Now that the clusters of each category are defines, map values to clusters'''
+transformer.map_to_clusters()
+
+'''regression model for the data'''
+transformer.regression_model()
+
+print('Starting go to market reccomendation analysis')
+'''calculate difference in pricing between the model and the actual prices to determine opportunities'''
+for col in REGRESSION_COLUMNS:
+    transformer.difference_vs_predicted(col)
+transformer.difference_vs_predicted(['age_clusters', 'policy_holder_gender'])
+transformer.difference_vs_predicted(['tariff_clusters', 'brand_clusters'])
+
+print('Finished analysis')
 
 
 

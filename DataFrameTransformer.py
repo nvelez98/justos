@@ -21,6 +21,7 @@ class DataFrameTransformer:
         self.regression_df = None
         self.anova_results = []
         self.regression_output_df = pd.DataFrame()
+        self.difference_dfs = []
 
     def read_data_parquet(self, path):
         self.df = pd.read_parquet(path)
@@ -145,15 +146,15 @@ class DataFrameTransformer:
 
     def regression_model(self):
 
-        df = self.regression_df[REGRESSION_COLUMNS]
+        df = self.regression_df.copy()
         df = df.dropna()
         df1 = df[REGRESSION_COLUMNS]
-        df = pd.get_dummies(df1, columns=CATEGORICAL_REGRESSION_COLUMNS, drop_first=True)
+        df1 = pd.get_dummies(df1, columns=CATEGORICAL_REGRESSION_COLUMNS, drop_first=True)
         dict = {True:1, False:0}
         for col in BOOL_COLS:
-            df[col] = df[col].map(dict)
-        y = df['policy_claims_total_amount_paid_brl']
-        X = df.drop(['policy_claims_total_amount_paid_brl'], axis=1)
+            df1[col] = df1[col].map(dict)
+        y = df1['policy_claims_total_amount_paid_brl']
+        X = df1.drop(['policy_claims_total_amount_paid_brl'], axis=1)
         X = sm.add_constant(X)
         model = sm.OLS(y, X).fit()
 
@@ -163,12 +164,18 @@ class DataFrameTransformer:
             X = X.drop([variable_to_remove], axis=1)
             model = sm.OLS(y, X).fit()
         print(model.summary())
-        self.regression_output_df = df1
+        self.regression_output_df = df
         self.regression_output_df['prediction'] = model.predict(X)
         self.regression_output_df['predicted_price'] = self.regression_output_df['prediction']/self.avg_loss_ratio
 
+    def difference_vs_predicted(self, col):
 
-
+        df1 = self.regression_output_df.groupby(col)['policy_premium_received_brl'].mean().reset_index(name='real_avg_price')
+        df2 = self.regression_output_df.groupby(col)['predicted_price'].mean().reset_index(
+            name='predicted_avg_price')
+        df = pd.merge(df1, df2, on=col)
+        df['model/real'] = df['predicted_avg_price']/df['real_avg_price']
+        self.difference_dfs.append(df)
 
 
 
