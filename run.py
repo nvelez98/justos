@@ -15,6 +15,19 @@ transformer.calc_avg_loss_ratio('policy_claims_total_amount_paid_brl', 'policy_p
 
 '''calculate the age of the policy holders, and create age groups in 5Y intervals'''
 transformer.calculate_age('policy_holder_birth_date')
+transformer.copy_into_regression()
+
+for col in REGRESSION_INPUT_CATEGORIES:
+    transformer.calculate_avg_loss_by_category('policy_claims_total_amount_paid_brl', col)
+
+for index, value in enumerate(REGRESSION_INPUT_CATEGORIES):
+    transformer.plot_barchart(transformer.avg_dfs[index], value, 'avg loss by {fill}'.format(fill = value), vals = 'avg_loss')
+
+for col in ANOVA_OW_CATEGORIES:
+    transformer.perform_one_anova('policy_claims_total_amount_paid_brl', col)
+
+
+
 
 '''Plot distribution of vehicle prices to get an idea of the behaviour of the variable'''
 transformer.plot_histogram('vehicle_value_brl', 'Distribution of vehicle values in insurance policies', limit = True)

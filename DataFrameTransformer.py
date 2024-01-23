@@ -3,6 +3,12 @@ import datetime
 from Constants import *
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor
+from statsmodels.formula.api import ols
+from statsmodels.stats.anova import anova_lm
+from scipy.stats import f_oneway
+from kmodes.kmodes import KModes
 
 
 class DataFrameTransformer:
@@ -10,10 +16,13 @@ class DataFrameTransformer:
         self.df = pd.DataFrame()
         self.NUM_INSURANCES = None
         self.dfs = []
+        self.avg_dfs = []
         self.avg_loss_ratio = None
         self.male_lr = None
         self.female_lr = None
         self.paid_df = None
+        self.regression_df = None
+        self.anova_results = []
 
     def read_data_parquet(self, path):
         self.df = pd.read_parquet(path)
@@ -66,6 +75,46 @@ class DataFrameTransformer:
         self.male_lr = df[df['policy_holder_gender'] == 'M']['loss_ratio'].iloc[0]
         self.female_lr = df[df['policy_holder_gender'] == 'F']['loss_ratio'].iloc[0]
 
+    def copy_into_regression(self):
+        self.regression_df = self.df.copy()
+
+    def calculate_avg_loss_by_category(self, paid_col, col):
+        count = self.regression_df.groupby(col).size().reset_index(name='count')
+        if col in REPLACE_LIST:
+            categories_to_replace = count[count['count'] < 1000][col].to_list()
+            copy_df = self.regression_df.copy()
+            self.regression_df[col] = self.regression_df[col].replace(categories_to_replace, 'others')
+            copy_df[col] = copy_df[col].replace(categories_to_replace, 'others')
+            avg_loss = copy_df.groupby(col)[paid_col].mean().reset_index(name='avg_loss')
+        else:
+            avg_loss = self.regression_df.groupby(col)[paid_col].mean().reset_index(name='avg_loss')
+        avg_loss = pd.merge(avg_loss, count, on=col)
+
+        self.avg_dfs.append(avg_loss)
+
+
+
+##############################################################################################
+    '''Pricing model functions'''
+
+
+    def perform_one_anova(self, metric, col):
+        dfs = []
+        unique_values = self.df[col].unique()
+        for unq in unique_values:
+            dfs.append(self.df[self.df[col]== unq][metric])
+        anova_result = f_oneway(*dfs)
+        self.anova_results.append(anova_result)
+        print(anova_result)
+
+    def create_clusters(self, col , metric, clusters = 3):
+
+        df_cluster = self.regression_df[[col,metric]]
+        n_clusters = clusters
+        km = KModes(n_clusters=n_clusters, init='random', n_init=5, verbose=1)
+        clusters = km.fit_predict(df_cluster)
+        col_name = '{col}_clusters'.format(col = col)
+        self.regression_df[col_name] = clusters
 
 
 ###############################################################################################
